@@ -6,5 +6,5 @@ In order to do this, it tries to place the payload code within the last 2 KB of 
 The "RT" section is 4 KB in size and executable by default.
 
 Moreover, it tries to keep a low profile while attempting to gain trusted process control by letting x64 HIPS only see the occurrence of an NtOpenProcess call.
-First time execution of arbitrary code is triggered using syscall stub hijacking in order to then force silent creation of a payload thread.
+First time execution of arbitrary code is triggered using syscall stub hijacking in order to then force silent creation of a dedicated payload thread.
 Due to the small section size as well as the required bootstrap code, any payload code should fit into 2 KB.
