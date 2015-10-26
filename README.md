@@ -11,3 +11,5 @@ Due to the small section size as well as the required bootstrap code, any payloa
 
 By elaboratedly using the Windows thread pool facility the remote code execution is now immediate and does not need
 to wait anymore until a particular syscall stub is being called.
+
+NOTE: The payload code still consists of nothing than a single "EB FE" instruction. Furthermore there is still lack of an interface for adding code in C format.
