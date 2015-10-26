@@ -1,14 +1,14 @@
-﻿Build started 24.09.2015 00:48:06.
+﻿Build started 26.10.2015 04:32:15.
      1>Project "C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\rtsectiontest\rtsectiontest.vcxproj" on node 2 (Rebuild target(s)).
      1>_MASM:
          Assembling auxfuncs.asm...
-         cmd.exe /C "C:\Users\MicrowaveStd\AppData\Local\Temp\tmpd1a6383dcc1446a6a5b3512eed6c3d5f.cmd"
+         cmd.exe /C "C:\Users\MicrowaveStd\AppData\Local\Temp\tmpee9f7f8c528b4447b7324d0ebdc7dc6c.cmd"
          ml64.exe /c /nologo /Zf /Zi /Fo"x64\Release\auxfuncs.obj" /W3 /errorReport:prompt  /Taauxfuncs.asm
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\CL.exe /c /nologo /W4 /WX- /O1 /Ob0 /Oi /Os /Oy /GL /D _UNICODE /D UNICODE /D _WIN64 /D _AMD64_ /D AMD64 /D _UNICODE /D UNICODE /Gm- /GS- /Gy /fp:fast /fp:except- /Zc:wchar_t /Zc:forScope /Zc:inline /GR- /Fo"x64\Release\\" /Fd"x64\Release\vc140.pdb" /Gz /TC /Zl /errorReport:prompt main.c
+         C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\CL.exe /c /nologo /W4 /WX- /O1 /Ob0 /Oi /Os /Oy /GL /D _UNICODE /D UNICODE /D _WIN64 /D _AMD64_ /D AMD64 /D _UNICODE /D UNICODE /Gm- /MDd /GS- /Gy /fp:fast /fp:except- /Zc:wchar_t /Zc:forScope /Zc:inline /GR- /Fo"x64\Release\\" /Fd"x64\Release\vc140.pdb" /Gz /TC /Zl /errorReport:prompt main.c
          main.c
-     1>main.c(67): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,HANDLE,PTHREAD_START_ROUTINE,PVOID,BOOLEAN,ULONG_PTR,SIZE_T,SIZE_T,PVOID)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(68): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,PVOID *,SIZE_T *,ULONG,PULONG)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(225): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,HANDLE,PTHREAD_START_ROUTINE,PVOID,BOOLEAN,ULONG_PTR,SIZE_T,SIZE_T,PVOID)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(226): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,PVOID *,SIZE_T *,ULONG,PULONG)' to data pointer 'PNT_SYSCALL_STUB'
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.exe" /VERSION:"6.1" /INCREMENTAL:NO /NOLOGO "C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\rtsectiontest\Libraries\myntdll.bin" /NODEFAULTLIB /MANIFEST:NO /DEBUG /PDB:"C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.pdb" /MAP /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /ENTRY:"mymain" /DYNAMICBASE /FIXED:NO /NXCOMPAT /IMPLIB:"C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.lib" /MACHINE:X64 /SAFESEH:NO x64\Release\main.obj
          x64\Release\auxfuncs.obj
@@ -19,4 +19,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.96
+Time Elapsed 00:00:02.71

