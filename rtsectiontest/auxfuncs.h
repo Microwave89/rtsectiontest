@@ -2,7 +2,7 @@
 //extern NTSTATUS syscallStub(ULONG syscallNum, ...);
 //__forceinline extern void myTerminate(void);
 extern BOOLEAN mymemcmp(PVOID src1, PVOID src2, SIZE_T length);
-extern ULONG injectionCode;
+extern ULONG_PTR injectionCode;
 extern ULONG_PTR originalSyscallCode;
 extern void fpCreatePayloadThread(ULONG_PTR payloadCodeAddress);
 //extern void fpBootstrapRoutine(void);
