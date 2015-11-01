@@ -1,18 +1,8 @@
 #pragma once
-//extern NTSTATUS syscallStub(ULONG syscallNum, ...);
-//__forceinline extern void myTerminate(void);
-extern BOOLEAN mymemcmp(PVOID src1, PVOID src2, SIZE_T length);
-extern ULONG_PTR injectionCode;
-extern ULONG_PTR originalSyscallCode;
-extern void fpCreatePayloadThread(ULONG_PTR payloadCodeAddress);
-//extern void fpBootstrapRoutine(void);
-extern PVOID createPayloadThreadBegin;
-extern PVOID createPayloadThreadEnd;
-extern UCHAR bootstrapRoutineBegin;
-extern UCHAR bootstrapRoutineEnd;
-extern SIZE_T protSize;
-extern ULONG ntCreateThreadExNumber;
-extern ULONG ntProtectVirtMemNumber;
-extern ULONG origProt;
-extern ULONG_PTR ldrInitializeThunkAddr;
-extern ULONG_PTR ntdllRxBaseAddr;
+extern BYTE bootstrapCodeBegin;
+extern BYTE bootstrapCodeEnd;
+
+extern ULONGLONG g_originalSyscallCode;
+extern ULONG_PTR g_ldrGetProcedureAddress;
+ULONG_PTR g_bootstrapCodeBegin = (ULONG_PTR)&bootstrapCodeBegin;
+ULONG_PTR g_bootstrapCodeEnd = (ULONG_PTR)&bootstrapCodeEnd;

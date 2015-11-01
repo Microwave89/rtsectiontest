@@ -20,9 +20,15 @@
     <ClInclude Include="auxfuncs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="payload.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="payload.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

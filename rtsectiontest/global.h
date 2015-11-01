@@ -16,6 +16,6 @@
 #include <windows.h>
 #include <..\ndk\ntndk.h>
 #include <intrin.h>
-#include "auxfuncs.h"
+//#include "auxfuncs.h"
 
 #endif
