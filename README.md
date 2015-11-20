@@ -1,6 +1,7 @@
 # rtsectiontest
 An Attempt to Bypass Memory Scanners By Misusing the ntdll.dll "RT" Section.
 
+SEE WINDOWS 10 10525+ ISSUE!!!
 
 See also branch "rtsectiontest_2"!
 
