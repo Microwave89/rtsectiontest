@@ -1,48 +1,63 @@
 .data
-
+getReturnAddress PROC
+	
+	mov eax, ecx
+	mov r10, rdx
+	mov rdx, r8
+	mov r8, r9
+	mov r9, qword ptr [rsp+28h]
+	add rsp, 8
+	syscall
+	sub rsp, 8
+	ret
+getReturnAddress ENDP
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
 bootstrapCodeBegin PROC
 bootstrapCodeBegin ENDP
-	mov rax, [rsp]							;Retrieve return address saved by caller (injectionHookAddress + 8)
-	dw 0BB48h								;rbx = *g_originalSyscallCode	
-g_originalSyscallCode PROC
-		dq 0CCCCCCCCCCCCCCCCh				;Original code of syscall stub
-g_originalSyscallCode ENDP
-	lock xchg qword ptr [rax - 8], rbx		;Restore original syscall stub code as soon as possible!
-	;nop qword ptr [rax+40000000h]
-	nop
-	nop
-	nop
-	nop
-	;int 3
-	;dw 0FEEBh
-;int  3
-	sub rsp, 28h							;Correct the stack so we don't get into trouble if we call high level functions later on 
-	db 0E9h									;jmp to our true C code payload routine. If we used the external address of our C payload routine
-											;by doing something with "EXTRN" keyword in masm the jmp would have a (indirect) connection to the
-											;injector base address which is bad for PIC code that runs within a completely other process.
-	dd 000000E0h							;Therefore, the jmp width needs to be hardcoded. The injector itself copies the payload
-											;code at the expected address.
+	int 3
 syscallStub PROC
 	mov eax, ecx
 	mov r10, rdx
 	mov rdx, r8
 	mov r8, r9
 	mov r9, qword ptr [rsp+28h]
-	add rsp, 8h
-	nop
+	add rsp, 8
 	syscall
-	sub rsp, 8h
+	sub rsp, 8
 	ret
 syscallStub ENDP
-	dd 0CCCCCCCCh	;Alignment
-	;0x40h:
-;g_ldrGetProcedureAddress PROC
-	dq 1111111111111111h
-;g_ldrGetProcedureAddress ENDP
-	nonNtAddresses QWORD 3 dup (?)
-	syscallArray QWORD 8 dup (?)
-	;beepDevice dw '\','D','e','v','!','c','e','_','B','e','e','p',0
-	beepDevice dw '\','B','a','s','e','N','a','m','e','d','O','b','j','e','c','t','s','\','B','l','a','h','h',0
+g_returnInstruction PROC
+	num0 db 0CCh, 0CCh, 0CCh, 0CCh
+g_returnInstruction ENDP
+g_resumationHandle PROC
+	dd 0CCCCCCCCh
+		num1 dd 0CCCCCCCCh	
+g_resumationHandle ENDP
+syscallNumberArray PROC	;0x20
+	num2 dd 0CCCCCCCCh	
+	num3 dd 0CCCCCCCCh
+	num4 dd 0CCCCCCCCh
+	num5 dd 0CCCCCCCCh	;0x30
+	num6 dd 0CCCCCCCCh
+	num7 dd 0CCCCCCCCh
+	num8 dd 0CCCCCCCCh
+	num9 dd 0CCCCCCCCh	;0x40
+	num10 dd 0CCCCCCCCh
+	num11 dd 0CCCCCCCCh
+syscallNumberArray ENDP
+additionalData PROC
+	dq 0CCCCCCCCCCCCCCCCh
+	dq 0CCCCCCCCCCCCCCCCh
+	dq 0CCCCCCCCCCCCCCCCh
+	dq 0CCCCCCCCCCCCCCCCh
+	dq 0CCCCCCCCCCCCCCCCh
+	dq 0CCCCCCCCCCCCCCCCh
+additionalData ENDP	;0x7F
+
 bootstrapCodeEnd PROC
 bootstrapCodeEnd ENDP
 END
